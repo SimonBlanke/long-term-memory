@@ -23,7 +23,7 @@ def find_version(*filepath):
 
 setup(
     name="hyperactive-long-term-memory",
-    version=find_version("long_term_memory/__init__.py"),
+    version=find_version("hyperactive_long_term_memory/__init__.py"),
     author="Simon Blanke",
     author_email="simon.blanke@yahoo.com",
     license="MIT",
