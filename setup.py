@@ -22,16 +22,16 @@ def find_version(*filepath):
 
 
 setup(
-    name="optimization_metadata",
-    version=find_version("optimization_metadata/__init__.py"),
+    name="hyperactive-long-term-memory",
+    version=find_version("long_term_memory/__init__.py"),
     author="Simon Blanke",
     author_email="simon.blanke@yahoo.com",
     license="MIT",
-    description="Meta-data core functionalities for Hyperactive",
+    description="Persistent search data storage for Hyperactive",
     long_description=long_description,
     long_description_content_type="text/markdown",
     keywords=["visualization", "data-science"],
-    url="https://github.com/SimonBlanke/Optimization-Metadata",
+    url="https://github.com/SimonBlanke/long-term-memory",
     packages=find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",

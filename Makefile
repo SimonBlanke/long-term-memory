@@ -10,8 +10,8 @@ develop:
 	pip install -e .
 
 reinstall:
-	pip uninstall -y optimization_metadata
-	rm -fr build dist optimization_metadata.egg-info
+	pip uninstall -y long_term_memory
+	rm -fr build dist long_term_memory.egg-info
 	python setup.py bdist_wheel
 	pip install dist/*
 
