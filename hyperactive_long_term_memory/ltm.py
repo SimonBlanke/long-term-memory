@@ -1,5 +1,8 @@
 import os
 import glob
+import dill as pickle
+import numbers
+import inspect
 import contextlib
 import pandas as pd
 
@@ -35,9 +38,31 @@ class DataIO:
                 if os.path.exists(search_data_proc_path):
                     os.remove(search_data_proc_path)
 
-    def _init_data_path(self, search_space, nth_process):
+    def _get_data_types(self, search_space):
+        self.search_space = search_space
         self.para_names = list(search_space.keys())
 
+        self.data_types = {}
+        for para_name in search_space.keys():
+            value0 = search_space[para_name][0]
+            print("\npara_name", para_name)
+
+            print("value0", value0, type(value0))
+            if isinstance(value0, numbers.Number):
+                type0 = "number"
+            elif isinstance(value0, str):
+                type0 = "string"
+            elif callable(value0):
+                type0 = "function"
+            else:
+                type0 = None
+                print("Warning! data type of ", para_name, " not recognized")
+
+            self.data_types[para_name] = type0
+
+        print("\n data_types \n", self.data_types, "\n")
+
+    def _init_data_path(self, objective_function, nth_process):
         # create file name for processes
         if nth_process is not None:
             self.file_name = "search_data_" + str(nth_process) + ".csv"
@@ -48,7 +73,14 @@ class DataIO:
         # create directories if they do not exist
         for ltm_dir in self.ltm_dirs:
             if not os.path.exists(ltm_dir):
-                os.makedirs(ltm_dir)
+                os.makedirs(ltm_dir, exist_ok=True)
+
+                # with open(ltm_dir + "objective_function.pkl", "wb") as file:
+                #     pickle.dump(objective_function, file)
+
+                func_string = inspect.getsource(objective_function)
+                with open(ltm_dir + "objective_function.txt", "w") as text_file:
+                    text_file.write(func_string)
 
         # create csv with header columns if they do not exist
         for ltm_path in self.ltm_paths:
@@ -57,24 +89,67 @@ class DataIO:
                 search_data.to_csv(ltm_path, index=False)
 
     def _load(self):
-        if os.path.isfile(self.ltm_user_path):
-            return pd.read_csv(self.ltm_user_path)
+        if os.path.isfile(self.ltm_user_path + self.file_name):
+            search_data = pd.read_csv(self.ltm_user_path + self.file_name)
+            """
+            # conv back to func
+            for para_name in self.data_types.keys():
+                data_type = self.data_types[para_name]
+
+                if data_type != "function":
+                    continue
+
+                func_replace = {}
+                for func in self.search_space[para_name]:
+                    func_name = func.__name__
+
+                    with open(self.ltm_user_path + func_name + ".pkl", "rb") as file:
+                        func = pickle.load(file)
+
+                    func_replace[func_name] = func
+
+            search_data[para_name] = search_data[para_name].replace(func_replace)
+            """
+
+            return search_data
+
+    def _conv_func(self, search_data, ltm_dir):
+        for para_name in self.data_types.keys():
+            data_type = self.data_types[para_name]
+
+            if data_type != "function":
+                continue
+
+            func_replace = {}
+            for func in self.search_space[para_name]:
+                func_name = func.__name__
+
+                func_replace[func] = func_name
+
+                # with open(ltm_dir + func_name + ".pkl", "wb") as file:
+                #     pickle.dump(func, file)
+
+            search_data[para_name] = search_data[para_name].replace(func_replace)
+
+        return search_data
 
     def _save(self, search_data):
-        for ltm_path in self.ltm_paths:
+        for ltm_dir in self.ltm_dirs:
             save_para = self.para_names + ["score"]
             search_data = search_data[save_para]
 
-            with atomic_overwrite(ltm_path) as f:
+            search_data = self._conv_func(search_data, ltm_dir)
+
+            with atomic_overwrite(ltm_dir + self.file_name) as f:
                 search_data.to_csv(f, index=False)
 
     def _append(self, para_dict):
-        for ltm_path in self.ltm_paths:
-            search_data = pd.read_csv(ltm_path)
+        for ltm_dir in self.ltm_dirs:
+            search_data = pd.read_csv(ltm_dir + self.file_name)
             search_data_new = pd.DataFrame(para_dict, index=[0])
             search_data = search_data.append(search_data_new)
 
-            with atomic_overwrite(ltm_path) as f:
+            with atomic_overwrite(ltm_dir + self.file_name) as f:
                 search_data.to_csv(f, index=False)
 
 
@@ -104,7 +179,7 @@ class LongTermMemory(DataIO):
 
         self.file_name = "search_data.csv"
 
-        self.ltm_user_path = path + self.model_path + self.file_name
+        self.ltm_user_path = path + self.model_path
 
         for path in self.paths:
             self.ltm_dirs.append(path + self.model_path)
