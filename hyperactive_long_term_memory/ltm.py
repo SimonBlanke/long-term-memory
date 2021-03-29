@@ -19,31 +19,52 @@ class DataIO:
     def __init__(self, path=None):
         pass
 
-    def _init_data_path(self, objective_function, nth_process):
+    def _init_data_path(self, nth_process):
+        process_paths = []
         # create file name for processes
         if nth_process is not None:
             self.file_name = "search_data_" + str(nth_process) + ".csv"
 
             for path in self.paths:
-                self.ltm_paths.append(path + self.model_path + self.file_name)
-
-        # create directories if they do not exist
-        for ltm_dir in self.ltm_dirs:
-            if not os.path.exists(ltm_dir):
-                os.makedirs(ltm_dir, exist_ok=True)
-
-                # with open(ltm_dir + "objective_function.pkl", "wb") as file:
-                #     pickle.dump(objective_function, file)
-
-                func_string = inspect.getsource(objective_function)
-                with open(ltm_dir + "objective_function.txt", "w") as text_file:
-                    text_file.write(func_string)
+                process_paths.append(path + self.model_path + self.file_name)
 
         # create csv with header columns if they do not exist
-        for ltm_path in self.ltm_paths:
-            if not os.path.isfile(ltm_path):
+        for process_path in process_paths:
+            if not os.path.isfile(process_path):
                 search_data = pd.DataFrame(columns=self.para_names)
-                search_data.to_csv(ltm_path, index=False)
+                search_data.to_csv(process_path, index=False)
+
+    def _init_data_types(self, search_space):
+        self.search_space = search_space
+        self.para_names = list(search_space.keys())
+
+        self.search_space_ltm = {}
+        self.data_types = {}
+        for para_name in search_space.keys():
+            value0 = search_space[para_name][0]
+
+            if isinstance(value0, numbers.Number):
+                type0 = "number"
+                search_dim_ltm = search_space[para_name]
+
+            elif isinstance(value0, str):
+                type0 = "string"
+                search_dim_ltm = search_space[para_name]
+
+            elif callable(value0):
+                type0 = "function"
+
+                search_dim_ltm = []
+                for func in list(search_space[para_name]):
+                    search_dim_ltm.append(func.__name__)
+            else:
+                type0 = None
+                search_dim_ltm = search_space[para_name]
+                print("Warning! data type of ", para_name, " not recognized")
+                print("Memory will not work")
+
+            self.data_types[para_name] = type0
+            self.search_space_ltm[para_name] = search_dim_ltm
 
     def _load(self):
         if os.path.isfile(self.ltm_user_path + self.file_name):
@@ -67,8 +88,6 @@ class DataIO:
                     #     func = pickle.load(file)
 
                     func_replace[func_name] = func
-
-            print("\n func_replace \n", func_replace)
 
             search_data[para_name] = search_data[para_name].replace(func_replace)
 
@@ -122,20 +141,13 @@ class LongTermMemory(DataIO):
         model_id,
         experiment_id="default",
         path=None,
-        backup=False,
     ):
         super().__init__(path)
 
         self.paths = [path]
 
-        if backup:
-            default_path, _ = os.path.realpath(__file__).rsplit("/", 1)
-            default_path = default_path + "/"
-            self.paths.append(default_path)
-
         self.model_path = "/long_term_memory/" + experiment_id + "/" + model_id + "/"
 
-        self.ltm_paths = []
         self.ltm_dirs = []
 
         self.file_name = "search_data.csv"
@@ -144,6 +156,20 @@ class LongTermMemory(DataIO):
 
         for path in self.paths:
             self.ltm_dirs.append(path + self.model_path)
+
+    def init_study(self, objective_function, search_space):
+        self._init_data_types(search_space)
+
+        # create directories if they do not exist
+        for ltm_dir in self.ltm_dirs:
+            if not os.path.exists(ltm_dir):
+                os.makedirs(ltm_dir, exist_ok=True)
+
+                func_string = inspect.getsource(objective_function)
+                with open(ltm_dir + "objective_function.txt", "w") as text_file:
+                    text_file.write(func_string)
+
+        self.clean_files()
 
     def clean_files(self):
         for ltm_dir in self.ltm_dirs:
@@ -164,43 +190,12 @@ class LongTermMemory(DataIO):
                 if os.path.exists(search_data_proc_path):
                     os.remove(search_data_proc_path)
 
-    def init_data_types(self, search_space):
-        self.search_space = search_space
-        self.para_names = list(search_space.keys())
-
-        self.search_space_ltm = {}
-        self.data_types = {}
-        for para_name in search_space.keys():
-            value0 = search_space[para_name][0]
-
-            if isinstance(value0, numbers.Number):
-                type0 = "number"
-                search_dim_ltm = search_space[para_name]
-
-            elif isinstance(value0, str):
-                type0 = "string"
-                search_dim_ltm = search_space[para_name]
-
-            elif callable(value0):
-                type0 = "function"
-
-                search_dim_ltm = []
-                for func in list(search_space[para_name]):
-                    search_dim_ltm.append(func.__name__)
-            else:
-                type0 = None
-                search_dim_ltm = search_space[para_name]
-                print("Warning! data type of ", para_name, " not recognized")
-                print("Memory will not work")
-
-            self.data_types[para_name] = type0
-            self.search_space_ltm[para_name] = search_dim_ltm
-
     def load(self):
         return self._load()
 
     def save_on_finish(self, dataframe):
         self._save(dataframe)
 
-    def save_on_iteration(self, data_dict):
+    def save_on_iteration(self, data_dict, nth_process):
+        self._init_data_path(nth_process)
         self._append(data_dict)
