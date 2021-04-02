@@ -1,10 +1,11 @@
 import os
 import glob
-import dill as pickle
 import numbers
 import inspect
 import contextlib
 import pandas as pd
+
+from .open_dashboard import open_dashboard
 
 
 @contextlib.contextmanager
@@ -199,3 +200,6 @@ class LongTermMemory(DataIO):
     def save_on_iteration(self, data_dict, nth_process):
         self._init_data_path(nth_process)
         self._append(data_dict)
+
+    def open_studyboard(self, path):
+        open_dashboard(path)
