@@ -114,23 +114,29 @@ class DataIO:
 
         return search_data
 
-    def _save(self, search_data):
+    def _save(self, search_data, drop_duplicates):
         for ltm_dir in self.ltm_dirs:
             save_para = self.para_names + ["score"]
             search_data = search_data[save_para]
 
             search_data = self._conv_func(search_data, ltm_dir)
 
+            if drop_duplicates:
+                search_data.drop_duplicates(subset=self.para_names, inplace=True)
+
             with atomic_overwrite(ltm_dir + self.file_name) as f:
                 search_data.to_csv(f, index=False)
 
-    def _append(self, para_dict):
+    def _append(self, para_dict, drop_duplicates):
         for ltm_dir in self.ltm_dirs:
             search_data = pd.read_csv(ltm_dir + self.file_name)
             search_data_new = pd.DataFrame(para_dict, index=[0])
             search_data_new = self._conv_func(search_data_new, ltm_dir)
 
             search_data = search_data.append(search_data_new)
+
+            if drop_duplicates:
+                search_data.drop_duplicates(subset=self.para_names, inplace=True)
 
             with atomic_overwrite(ltm_dir + self.file_name) as f:
                 search_data.to_csv(f, index=False)
@@ -139,13 +145,13 @@ class DataIO:
 class LongTermMemory(DataIO):
     def __init__(
         self,
-        model_id,
-        experiment_id="default",
         path=None,
     ):
         super().__init__(path)
+        self.path = path
 
-        self.paths = [path]
+    def _init_paths(self, model_id, experiment_id):
+        self.paths = [self.path]
 
         self.model_path = "/long_term_memory/" + experiment_id + "/" + model_id + "/"
 
@@ -153,12 +159,20 @@ class LongTermMemory(DataIO):
 
         self.file_name = "search_data.csv"
 
-        self.ltm_user_path = path + self.model_path
+        self.ltm_user_path = self.path + self.model_path
 
         for path in self.paths:
             self.ltm_dirs.append(path + self.model_path)
 
-    def init_study(self, objective_function, search_space):
+    def init_study(
+        self,
+        objective_function,
+        search_space,
+        model_id,
+        experiment_id="default",
+        drop_duplicates=True,
+    ):
+        self._init_paths(model_id, experiment_id)
         self._init_data_types(search_space)
 
         # create directories if they do not exist
@@ -170,9 +184,9 @@ class LongTermMemory(DataIO):
                 with open(ltm_dir + "objective_function.txt", "w") as text_file:
                     text_file.write(func_string)
 
-        self.clean_files()
+        self.clean_files(drop_duplicates)
 
-    def clean_files(self):
+    def clean_files(self, drop_duplicates):
         for ltm_dir in self.ltm_dirs:
             search_data_proc_paths = glob.glob(ltm_dir + "search_data_*.csv")
             search_data_paths = glob.glob(ltm_dir + "search_data*.csv")
@@ -186,6 +200,9 @@ class LongTermMemory(DataIO):
                 search_data = pd.concat(search_data_list, axis=0)
                 search_data.to_csv(ltm_dir + "search_data.csv", index=False)
 
+                if drop_duplicates:
+                    search_data.drop_duplicates(subset=self.para_names, inplace=True)
+
             # remove search_data_* files
             for search_data_proc_path in search_data_proc_paths:
                 if os.path.exists(search_data_proc_path):
@@ -194,12 +211,12 @@ class LongTermMemory(DataIO):
     def load(self):
         return self._load()
 
-    def save_on_finish(self, dataframe):
-        self._save(dataframe)
+    def save_on_finish(self, dataframe, drop_duplicates=True):
+        self._save(dataframe, drop_duplicates)
 
-    def save_on_iteration(self, data_dict, nth_process):
-        self._init_data_path(nth_process)
+    def save_on_iteration(self, data_dict, nth_process, drop_duplicates=True):
+        self._init_data_path(nth_process, drop_duplicates)
         self._append(data_dict)
 
-    def open_studyboard(self, path):
+    def open_studyboard(self, path, drop_duplicates=True):
         open_dashboard(path)
