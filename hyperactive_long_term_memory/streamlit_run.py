@@ -99,6 +99,8 @@ st.header("Objective Function Statistics")
 st.text("")
 st.table(df.assign(hack="").set_index("hack"))
 
+# st.dataframe(df)
+
 
 search_data_path = (
     path + "/long_term_memory/" + exper_select + "/" + model_select + "/search_data.csv"

@@ -153,7 +153,7 @@ class LongTermMemory(DataIO):
     def _init_paths(self, model_id, experiment_id):
         self.paths = [self.path]
 
-        self.model_path = "/long_term_memory/" + experiment_id + "/" + model_id + "/"
+        self.model_path = "/ltm_data/" + experiment_id + "/" + model_id + "/"
 
         self.ltm_dirs = []
 
@@ -218,5 +218,10 @@ class LongTermMemory(DataIO):
         self._init_data_path(nth_process, drop_duplicates)
         self._append(data_dict)
 
-    def open_studyboard(self, path, drop_duplicates=True):
-        open_dashboard(path)
+
+class Dashboard:
+    def __init__(self, path):
+        self.path = path
+
+    def open(self):
+        open_dashboard(self.path)
