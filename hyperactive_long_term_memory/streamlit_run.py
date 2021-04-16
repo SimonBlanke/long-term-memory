@@ -14,28 +14,6 @@ from shutil import copyfile
 import plotly.graph_objects as go
 
 
-try:
-    st.set_page_config(page_title="Study Dashboard", layout="wide")
-except:
-    pass
-
-st.sidebar.title("Study Dashboard")
-st.sidebar.text("")
-st.sidebar.text("")
-st.sidebar.text("")
-
-path = sys.argv[1]
-
-
-ltm_path = path + "/long_term_memory"
-
-exp_name_list = os.listdir(ltm_path)
-exper_select = st.sidebar.selectbox("Select Expermiment", exp_name_list)
-
-model_name_list = os.listdir(path + "/long_term_memory/" + exper_select + "/")
-model_select = st.sidebar.selectbox("Select Objective Function", model_name_list)
-
-
 def search_data_statistics(search_data):
     scores = search_data["score"]
 
@@ -51,29 +29,6 @@ def search_data_statistics(search_data):
         "score max": score_max,
         "n samples": n_samples,
     }
-
-
-stats_list = []
-for model_name in model_name_list:
-    search_data_path = (
-        path
-        + "/long_term_memory/"
-        + exper_select
-        + "/"
-        + model_name
-        + "/search_data.csv"
-    )
-    search_data = pd.read_csv(search_data_path)
-    stats = search_data_statistics(search_data)
-
-    stats["Objective Function"] = model_name
-    stats_list.append(stats)
-
-df = pd.DataFrame(stats_list)
-col_no_obj = list(df.columns)
-col_no_obj.remove("Objective Function")
-columns = ["Objective Function"] + col_no_obj
-df = df.reindex(columns, axis=1)
 
 
 def plotly_table(df):
@@ -95,18 +50,81 @@ def plotly_table(df):
     st.plotly_chart(fig)
 
 
-st.header("Objective Function Statistics")
-st.text("")
-st.table(df.assign(hack="").set_index("hack"))
+def streamlit_table(dataframe):
+    st.header("Objective Function Statistics")
+    st.text("")
+    st.table(dataframe.assign(hack="").set_index("hack"))
 
-# st.dataframe(df)
+
+class DashboardBackend:
+    def __init__(self, path):
+        self.path = path
+        self.ltm_path = self.path + "/ltm_data/"
+
+    def get_expermiment_list(self):
+        return os.listdir(self.ltm_path)
+
+    def get_objective_function_list(self, experiment_id):
+        return os.listdir(self.ltm_path + experiment_id + "/")
+
+    def read_search_data(self, experiment_id, model_id):
+        search_data_path = (
+            path + "/ltm_data/" + experiment_id + "/" + model_id + "/search_data.csv"
+        )
+        return pd.read_csv(search_data_path)
+
+    def create_model_statistics(self, model_name_list):
+        stats_list = []
+        for model_name in model_name_list:
+            search_data_path = (
+                path
+                + "/ltm_data/"
+                + exper_select
+                + "/"
+                + model_name
+                + "/search_data.csv"
+            )
+            search_data = pd.read_csv(search_data_path)
+            stats = search_data_statistics(search_data)
+
+            stats["Objective Function"] = model_name
+            stats_list.append(stats)
+
+        df = pd.DataFrame(stats_list)
+        col_no_obj = list(df.columns)
+        col_no_obj.remove("Objective Function")
+        columns = ["Objective Function"] + col_no_obj
+        df = df.reindex(columns, axis=1)
+
+        return df
 
 
-search_data_path = (
-    path + "/long_term_memory/" + exper_select + "/" + model_select + "/search_data.csv"
-)
-search_data = pd.read_csv(search_data_path)
+try:
+    st.set_page_config(page_title="Study Dashboard", layout="wide")
+except:
+    pass
 
+st.sidebar.title("Study Dashboard")
+st.sidebar.text("")
+st.sidebar.text("")
+st.sidebar.text("")
+
+path = sys.argv[1]
+
+
+backend = DashboardBackend(path)
+
+exp_name_list = backend.get_expermiment_list()
+exper_select = st.sidebar.selectbox("Select Expermiment", exp_name_list)
+
+model_name_list = backend.get_objective_function_list(exper_select)
+model_select = st.sidebar.selectbox("Select Objective Function", model_name_list)
+
+
+model_statistics = backend.create_model_statistics(model_name_list)
+streamlit_table(model_statistics)
+
+search_data = backend.read_search_data(exper_select, model_select)
 
 st.sidebar.text("")
 if st.sidebar.button("Start Plot Dashboard"):
