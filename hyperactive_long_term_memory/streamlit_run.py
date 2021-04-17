@@ -4,13 +4,9 @@
 
 import os
 import sys
-import pathlib
-import subprocess
 import numpy as np
 import pandas as pd
 import streamlit as st
-from glob import glob
-from shutil import copyfile
 import plotly.graph_objects as go
 
 
@@ -51,7 +47,7 @@ def plotly_table(df):
 
 
 def streamlit_table(dataframe):
-    st.header("Objective Function Statistics")
+    st.header("Experiment Statistics")
     st.text("")
     st.table(dataframe.assign(hack="").set_index("hack"))
 
@@ -73,6 +69,20 @@ class DashboardBackend:
         )
         return pd.read_csv(search_data_path)
 
+    def read_objective_function(self, experiment_id, model_id):
+        objective_function_path = (
+            path
+            + "/ltm_data/"
+            + experiment_id
+            + "/"
+            + model_id
+            + "/objective_function.txt"
+        )
+        with open(objective_function_path) as f:
+            objective_function = f.read()
+
+        return objective_function
+
     def create_model_statistics(self, model_name_list):
         stats_list = []
         for model_name in model_name_list:
@@ -87,44 +97,62 @@ class DashboardBackend:
             search_data = pd.read_csv(search_data_path)
             stats = search_data_statistics(search_data)
 
-            stats["Objective Function"] = model_name
+            # objective_function = self.read_objective_function(exper_select, model_name)
+            # obj_func_name = objective_function.__name__
+
+            stats["Objective Function ID"] = model_name
+            # stats["Objective Function"] = obj_func_name
             stats_list.append(stats)
 
         df = pd.DataFrame(stats_list)
         col_no_obj = list(df.columns)
-        col_no_obj.remove("Objective Function")
-        columns = ["Objective Function"] + col_no_obj
+        col_no_obj.remove("Objective Function ID")
+        columns = ["Objective Function ID"] + col_no_obj
         df = df.reindex(columns, axis=1)
 
         return df
 
 
 try:
-    st.set_page_config(page_title="Study Dashboard", layout="wide")
+    st.set_page_config(page_title="Long Term Memory Dashboard", layout="wide")
 except:
     pass
 
-st.sidebar.title("Study Dashboard")
+st.sidebar.title("Long Term Memory Dashboard")
 st.sidebar.text("")
 st.sidebar.text("")
 st.sidebar.text("")
 
 path = sys.argv[1]
 
-
 backend = DashboardBackend(path)
 
 exp_name_list = backend.get_expermiment_list()
-exper_select = st.sidebar.selectbox("Select Expermiment", exp_name_list)
+exper_select = st.sidebar.selectbox("Select Experiment:", exp_name_list)
 
 model_name_list = backend.get_objective_function_list(exper_select)
-model_select = st.sidebar.selectbox("Select Objective Function", model_name_list)
+model_select = st.sidebar.selectbox("Select Objective Function:", model_name_list)
 
 
 model_statistics = backend.create_model_statistics(model_name_list)
-streamlit_table(model_statistics)
+# streamlit_table(model_statistics)
+
+
+objective_function_str = backend.read_objective_function(exper_select, model_select)
+
 
 search_data = backend.read_search_data(exper_select, model_select)
+
+col1, col2 = st.beta_columns(2)
+
+col1.header("Experiment Statistics")
+col1.text("")
+col1.table(model_statistics.assign(hack="").set_index("hack"))
+
+col2.header("Objective Function")
+col2.text("")
+col2.code(objective_function_str)
+
 
 st.sidebar.text("")
 if st.sidebar.button("Start Plot Dashboard"):
