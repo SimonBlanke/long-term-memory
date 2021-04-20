@@ -118,14 +118,20 @@ try:
 except:
     pass
 
-st.sidebar.title("Long Term Memory Dashboard")
-st.sidebar.text("")
-st.sidebar.text("")
-st.sidebar.text("")
+st.title("Long Term Memory Dashboard")
+st.markdown("---")
+st.text("")
+st.text("")
+st.text("")
 
 path = sys.argv[1]
 
 backend = DashboardBackend(path)
+
+st.sidebar.title("Long Term Memory")
+st.sidebar.text("")
+st.sidebar.text("")
+st.sidebar.text("")
 
 exp_name_list = backend.get_expermiment_list()
 exper_select = st.sidebar.selectbox("Select Experiment:", exp_name_list)
@@ -153,16 +159,20 @@ col2.header("Objective Function")
 col2.text("")
 col2.code(objective_function_str)
 
+st.text("")
+st.text("")
+st.text("")
+
+st.title("Plots")
+st.markdown("---")
+
+st.text("")
+
+
+from optimization_dashboards import ltm_wrapper
 
 st.sidebar.text("")
-if st.sidebar.button("Start Plot Dashboard"):
-    from optimization_dashboards import ltm_wrapper
+st.sidebar.text("")
+st.sidebar.text("")
 
-    st.sidebar.text("")
-    st.sidebar.text("")
-    st.sidebar.text("")
-
-    ltm_wrapper.open(search_data)
-
-else:
-    pass
+ltm_wrapper.open(search_data)
