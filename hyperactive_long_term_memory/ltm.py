@@ -152,6 +152,7 @@ class LongTermMemory(DataIO):
 
     def _init_paths(self, model_id, experiment_id):
         self.paths = [self.path]
+        self.ltm_path = self.path + "/ltm_data/"
 
         self.model_path = "/ltm_data/" + experiment_id + "/" + model_id + "/"
 
@@ -208,6 +209,18 @@ class LongTermMemory(DataIO):
                 if os.path.exists(search_data_proc_path):
                     os.remove(search_data_proc_path)
 
+    def expermiments(self):
+        return os.listdir(self.ltm_path)
+
+    def objective_functions(self, experiment_id):
+        return os.listdir(self.ltm_path + experiment_id + "/")
+
+    def search_data(self, experiment_id, model_id):
+        search_data_path = (
+            self.ltm_path + experiment_id + "/" + model_id + "/search_data.csv"
+        )
+        return pd.read_csv(search_data_path)
+
     def load(self):
         return self._load()
 
@@ -215,8 +228,8 @@ class LongTermMemory(DataIO):
         self._save(dataframe, drop_duplicates)
 
     def save_on_iteration(self, data_dict, nth_process, drop_duplicates=True):
-        self._init_data_path(nth_process, drop_duplicates)
-        self._append(data_dict)
+        self._init_data_path(nth_process)
+        self._append(data_dict, drop_duplicates)
 
 
 class Dashboard:
