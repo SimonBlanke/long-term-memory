@@ -3,6 +3,7 @@
 # License: MIT License
 
 import os
+import dill
 import glob
 import numbers
 import inspect
@@ -104,11 +105,13 @@ class LongTermMemory:
                 for func in self.search_space[para_name]:
                     func_name = func.__name__
 
+                    with open(
+                        self.ltm_user_path + "objective_function.pkl", "rb"
+                    ) as input_file:
+                        objective_function = dill.load(input_file)
+
                     # if not os.path.isfile(self.ltm_user_path + func_name + ".pkl"):
                     #     continue
-
-                    # with open(self.ltm_user_path + func_name + ".pkl", "rb") as file:
-                    #     func = pickle.load(file)
 
                     func_replace[func_name] = func
 
@@ -201,9 +204,14 @@ class LongTermMemory:
             if not os.path.exists(ltm_dir):
                 os.makedirs(ltm_dir, exist_ok=True)
 
+            if not os.path.exists(ltm_dir + "objective_function.pkl"):
+                """
                 func_string = inspect.getsource(objective_function)
                 with open(ltm_dir + "objective_function.txt", "w") as text_file:
                     text_file.write(func_string)
+                """
+                with open(ltm_dir + "objective_function.pkl", "wb") as output_file:
+                    dill.dump(self.objective_function, output_file)
 
         self.clean_files(drop_duplicates)
 

@@ -4,6 +4,8 @@
 
 import os
 import sys
+import dill
+import inspect
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -76,10 +78,13 @@ class DashboardBackend:
             + experiment_id
             + "/"
             + model_id
-            + "/objective_function.txt"
+            + "/objective_function.pkl"
         )
-        with open(objective_function_path) as f:
-            objective_function = f.read()
+        # with open(objective_function_path) as f:
+        #     objective_function = f.read()
+
+        with open(objective_function_path, "rb") as input_file:
+            objective_function = dill.load(input_file)
 
         return objective_function
 
@@ -144,7 +149,8 @@ model_statistics = backend.create_model_statistics(model_name_list)
 # streamlit_table(model_statistics)
 
 
-objective_function_str = backend.read_objective_function(exper_select, model_select)
+objective_function = backend.read_objective_function(exper_select, model_select)
+objective_function_str = inspect.getsource(objective_function)
 
 
 search_data = backend.read_search_data(exper_select, model_select)
