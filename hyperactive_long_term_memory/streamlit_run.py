@@ -102,17 +102,20 @@ class DashboardBackend:
             search_data = pd.read_csv(search_data_path)
             stats = search_data_statistics(search_data)
 
-            # objective_function = self.read_objective_function(exper_select, model_name)
-            # obj_func_name = objective_function.__name__
+            objective_function = self.read_objective_function(exper_select, model_name)
+            obj_func_name = objective_function.__name__
 
-            stats["Objective Function ID"] = model_name
-            # stats["Objective Function"] = obj_func_name
+            stats["Model ID"] = model_name
+            stats["Objective Function"] = obj_func_name
             stats_list.append(stats)
 
         df = pd.DataFrame(stats_list)
         col_no_obj = list(df.columns)
-        col_no_obj.remove("Objective Function ID")
-        columns = ["Objective Function ID"] + col_no_obj
+        col_no_obj.remove("Model ID")
+        col_no_obj.remove("Objective Function")
+
+        columns = ["Model ID", "Objective Function"] + col_no_obj
+
         df = df.reindex(columns, axis=1)
 
         return df
