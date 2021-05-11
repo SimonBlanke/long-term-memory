@@ -150,11 +150,11 @@ class LongTermMemory(DataIO):
         super().__init__(path)
         self.path = path
 
-    def _init_paths(self, model_id, experiment_id):
+    def _init_paths(self, model_id, study_id):
         self.paths = [self.path]
         self.ltm_path = self.path + "/ltm_data/"
 
-        self.model_path = "/ltm_data/" + experiment_id + "/" + model_id + "/"
+        self.model_path = "/ltm_data/" + study_id + "/" + model_id + "/"
 
         self.ltm_dirs = []
 
@@ -165,15 +165,15 @@ class LongTermMemory(DataIO):
         for path in self.paths:
             self.ltm_dirs.append(path + self.model_path)
 
-    def init_study(
+    def init_experiment(
         self,
         objective_function,
         search_space,
         model_id,
-        experiment_id="default",
+        study_id="default",
         drop_duplicates=True,
     ):
-        self._init_paths(model_id, experiment_id)
+        self._init_paths(model_id, study_id)
         self._init_data_types(search_space)
 
         # create directories if they do not exist
@@ -209,15 +209,15 @@ class LongTermMemory(DataIO):
                 if os.path.exists(search_data_proc_path):
                     os.remove(search_data_proc_path)
 
-    def expermiments(self):
+    def studys(self):
         return os.listdir(self.ltm_path)
 
-    def objective_functions(self, experiment_id):
-        return os.listdir(self.ltm_path + experiment_id + "/")
+    def objective_functions(self, study_id):
+        return os.listdir(self.ltm_path + study_id + "/")
 
-    def search_data(self, experiment_id, model_id):
+    def search_data(self, study_id, model_id):
         search_data_path = (
-            self.ltm_path + experiment_id + "/" + model_id + "/search_data.csv"
+            self.ltm_path + study_id + "/" + model_id + "/search_data.csv"
         )
         return pd.read_csv(search_data_path)
 
@@ -227,7 +227,7 @@ class LongTermMemory(DataIO):
     def save_on_finish(self, dataframe, drop_duplicates=True):
         self._save(dataframe, drop_duplicates)
 
-    def save_on_iteration(self, data_dict, nth_process, drop_duplicates=True):
+    def save_on_iteration(self, data_dict, nth_process=None, drop_duplicates=True):
         self._init_data_path(nth_process)
         self._append(data_dict, drop_duplicates)
 

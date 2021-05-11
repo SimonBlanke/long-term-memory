@@ -169,7 +169,8 @@ st.markdown("---")
 st.text("")
 
 
-from optimization_dashboards import ltm_wrapper
+# Tabular Data Explorer
+from tabular_data_explorer import ltm_wrapper
 
 st.sidebar.text("")
 st.sidebar.text("")
