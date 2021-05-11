@@ -5,11 +5,10 @@
 import os
 import dill
 import glob
-import numbers
-import inspect
 import contextlib
 import pandas as pd
 
+from .search_data_converter import SearchDataConverter
 from .open_dashboard import open_dashboard
 
 pd.options.mode.chained_assignment = None
@@ -21,36 +20,6 @@ def atomic_overwrite(filename):
     with open(temp, "w") as f:
         yield f
     os.rename(temp, filename)  # this will only happen if no exception was raised
-
-
-def init_data_types(search_space):
-    data_types = {}
-    for para_name in search_space.keys():
-        value0 = search_space[para_name][0]
-
-        if isinstance(value0, numbers.Number):
-            type0 = "number"
-            search_dim_ltm = search_space[para_name]
-
-        elif isinstance(value0, str):
-            type0 = "string"
-            search_dim_ltm = search_space[para_name]
-
-        elif callable(value0):
-            type0 = "function"
-
-            search_dim_ltm = []
-            for func in list(search_space[para_name]):
-                search_dim_ltm.append(func.__name__)
-        else:
-            type0 = None
-            search_dim_ltm = search_space[para_name]
-            print("Warning! data type of ", para_name, " not recognized")
-            print("Memory will not work")
-
-        data_types[para_name] = type0
-
-    return data_types
 
 
 class LongTermMemory:
@@ -93,54 +62,17 @@ class LongTermMemory:
     def _load(self):
         if os.path.isfile(self.ltm_user_path + self.file_name):
             search_data = pd.read_csv(self.ltm_user_path + self.file_name)
-
-            # conv back to func
-            for para_name in self.data_types.keys():
-                data_type = self.data_types[para_name]
-
-                if data_type != "function":
-                    continue
-
-                func_replace = {}
-                for func in self.search_space[para_name]:
-                    func_name = func.__name__
-
-                    with open(
-                        self.ltm_user_path + "objective_function.pkl", "rb"
-                    ) as input_file:
-                        objective_function = dill.load(input_file)
-
-                    # if not os.path.isfile(self.ltm_user_path + func_name + ".pkl"):
-                    #     continue
-
-                    func_replace[func_name] = func
-
-            search_data[para_name].replace(func_replace, inplace=True)
+            search_data = self.sd_conv.str2func(search_data)
 
             return search_data
 
-    def _conv_func(self, search_data):
-        for para_name in self.data_types.keys():
-            data_type = self.data_types[para_name]
-
-            if data_type != "function":
-                continue
-
-            func_replace = {}
-            for func in self.search_space[para_name]:
-                func_name = func.__name__
-                func_replace[func] = func_name
-
-            search_data[para_name].replace(func_replace, inplace=True)
-
-        return search_data
-
     def _save(self, search_data, drop_duplicates):
         for ltm_dir in self.ltm_dirs:
-            save_para = self.para_names + ["score"]
-            search_data = search_data[save_para]
+            search_data = self.sd_conv.func2str(search_data)
 
-            search_data = self._conv_func(search_data)
+            search_data_loaded = self._load()
+            if not self.replace_existing and search_data_loaded is not None:
+                search_data = pd.concat([search_data, search_data_loaded], axis=0)
 
             if drop_duplicates:
                 search_data.drop_duplicates(subset=self.para_names, inplace=True)
@@ -150,11 +82,12 @@ class LongTermMemory:
 
     def _append(self, para_dict, drop_duplicates):
         for ltm_dir in self.ltm_dirs:
-            search_data = pd.read_csv(ltm_dir + self.file_name)
-            search_data_new = pd.DataFrame(para_dict, index=[0])
-            search_data_new = self._conv_func(search_data_new)
+            search_data = pd.DataFrame(para_dict, index=[0])
+            search_data = self.sd_conv.func2str(search_data)
 
-            search_data = search_data.append(search_data_new)
+            if not self.replace_existing and self.search_data_loaded is not None:
+                search_data_loaded = self._load()
+                search_data = pd.concat([search_data, search_data_loaded], axis=0)
 
             if drop_duplicates:
                 search_data.drop_duplicates(subset=self.para_names, inplace=True)
@@ -190,14 +123,18 @@ class LongTermMemory:
         search_space,
         study_id,
         model_id,
+        replace_existing=False,
         drop_duplicates=True,
     ):
         self.objective_function = objective_function
         self.search_space = search_space
 
+        self.replace_existing = replace_existing
+
         self._init_paths(model_id, study_id)
-        self.data_types = init_data_types(search_space)
         self.para_names = list(search_space.keys())
+
+        self.sd_conv = SearchDataConverter(search_space)
 
         # create directories if they do not exist
         for ltm_dir in self.ltm_dirs:
