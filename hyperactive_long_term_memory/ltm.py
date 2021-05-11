@@ -1,3 +1,7 @@
+# Author: Simon Blanke
+# Email: simon.blanke@yahoo.com
+# License: MIT License
+
 import os
 import glob
 import numbers
@@ -16,9 +20,27 @@ def atomic_overwrite(filename):
     os.rename(temp, filename)  # this will only happen if no exception was raised
 
 
-class DataIO:
-    def __init__(self, path=None):
-        pass
+class LongTermMemory:
+    def __init__(
+        self,
+        path=None,
+    ):
+        self.path = path
+
+    def _init_paths(self, model_id, study_id):
+        self.paths = [self.path]
+        self.ltm_path = self.path + "/ltm_data/"
+
+        self.model_path = "/ltm_data/" + study_id + "/" + model_id + "/"
+
+        self.ltm_dirs = []
+
+        self.file_name = "search_data.csv"
+
+        self.ltm_user_path = self.path + self.model_path
+
+        for path in self.paths:
+            self.ltm_dirs.append(path + self.model_path)
 
     def _init_data_path(self, nth_process):
         process_paths = []
@@ -94,7 +116,7 @@ class DataIO:
 
             return search_data
 
-    def _conv_func(self, search_data, ltm_dir):
+    def _conv_func(self, search_data):
         for para_name in self.data_types.keys():
             data_type = self.data_types[para_name]
 
@@ -104,11 +126,7 @@ class DataIO:
             func_replace = {}
             for func in self.search_space[para_name]:
                 func_name = func.__name__
-
                 func_replace[func] = func_name
-
-                # with open(ltm_dir + func_name + ".pkl", "wb") as file:
-                #     pickle.dump(func, file)
 
             search_data[para_name] = search_data[para_name].replace(func_replace)
 
@@ -119,7 +137,7 @@ class DataIO:
             save_para = self.para_names + ["score"]
             search_data = search_data[save_para]
 
-            search_data = self._conv_func(search_data, ltm_dir)
+            search_data = self._conv_func(search_data)
 
             if drop_duplicates:
                 search_data.drop_duplicates(subset=self.para_names, inplace=True)
@@ -131,7 +149,7 @@ class DataIO:
         for ltm_dir in self.ltm_dirs:
             search_data = pd.read_csv(ltm_dir + self.file_name)
             search_data_new = pd.DataFrame(para_dict, index=[0])
-            search_data_new = self._conv_func(search_data_new, ltm_dir)
+            search_data_new = self._conv_func(search_data_new)
 
             search_data = search_data.append(search_data_new)
 
@@ -140,52 +158,6 @@ class DataIO:
 
             with atomic_overwrite(ltm_dir + self.file_name) as f:
                 search_data.to_csv(f, index=False)
-
-
-class LongTermMemory(DataIO):
-    def __init__(
-        self,
-        path=None,
-    ):
-        super().__init__(path)
-        self.path = path
-
-    def _init_paths(self, model_id, study_id):
-        self.paths = [self.path]
-        self.ltm_path = self.path + "/ltm_data/"
-
-        self.model_path = "/ltm_data/" + study_id + "/" + model_id + "/"
-
-        self.ltm_dirs = []
-
-        self.file_name = "search_data.csv"
-
-        self.ltm_user_path = self.path + self.model_path
-
-        for path in self.paths:
-            self.ltm_dirs.append(path + self.model_path)
-
-    def init_experiment(
-        self,
-        objective_function,
-        search_space,
-        model_id,
-        study_id="default",
-        drop_duplicates=True,
-    ):
-        self._init_paths(model_id, study_id)
-        self._init_data_types(search_space)
-
-        # create directories if they do not exist
-        for ltm_dir in self.ltm_dirs:
-            if not os.path.exists(ltm_dir):
-                os.makedirs(ltm_dir, exist_ok=True)
-
-                func_string = inspect.getsource(objective_function)
-                with open(ltm_dir + "objective_function.txt", "w") as text_file:
-                    text_file.write(func_string)
-
-        self.clean_files(drop_duplicates)
 
     def clean_files(self, drop_duplicates):
         for ltm_dir in self.ltm_dirs:
@@ -209,17 +181,27 @@ class LongTermMemory(DataIO):
                 if os.path.exists(search_data_proc_path):
                     os.remove(search_data_proc_path)
 
-    def studys(self):
-        return os.listdir(self.ltm_path)
+    def init_experiment(
+        self,
+        objective_function,
+        search_space,
+        study_id,
+        model_id,
+        drop_duplicates=True,
+    ):
+        self._init_paths(model_id, study_id)
+        self._init_data_types(search_space)
 
-    def objective_functions(self, study_id):
-        return os.listdir(self.ltm_path + study_id + "/")
+        # create directories if they do not exist
+        for ltm_dir in self.ltm_dirs:
+            if not os.path.exists(ltm_dir):
+                os.makedirs(ltm_dir, exist_ok=True)
 
-    def search_data(self, study_id, model_id):
-        search_data_path = (
-            self.ltm_path + study_id + "/" + model_id + "/search_data.csv"
-        )
-        return pd.read_csv(search_data_path)
+                func_string = inspect.getsource(objective_function)
+                with open(ltm_dir + "objective_function.txt", "w") as text_file:
+                    text_file.write(func_string)
+
+        self.clean_files(drop_duplicates)
 
     def load(self):
         return self._load()
