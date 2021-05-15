@@ -6,10 +6,11 @@ import os
 import sys
 import dill
 import inspect
-import numpy as np
 import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
+
+from ltm_wrapper import open_tde
 
 
 def search_data_statistics(search_data):
@@ -29,29 +30,46 @@ def search_data_statistics(search_data):
     }
 
 
-def plotly_table(df):
+def plotly_table(df, _st_):
+    headerColor = "grey"
+    rowEvenColor = "lightgrey"
+    rowOddColor = "white"
+
+    df_len = len(df)
+
     fig = go.Figure(
         data=[
             go.Table(
                 header=dict(
-                    values=list(df.columns), fill_color="paleturquoise", align="left"
+                    values=list(df.columns), fill_color="#b5beff", align="left"
                 ),
                 cells=dict(
                     values=[df[col] for col in df.columns],
-                    fill_color="lavender",
-                    align="left",
+                    # fill_color="lavender",
+                    fill_color=[
+                        [
+                            rowOddColor,
+                            rowEvenColor,
+                        ]
+                        * int((df_len / 2) + 1)
+                    ],
+                    align=["left", "center"],
+                    font=dict(color="darkslategray", size=11),
                 ),
             )
         ]
     )
+    width = 900
+    height = 700
+    fig.update_layout(width=width, height=height)
 
-    st.plotly_chart(fig)
+    _st_.plotly_chart(fig)
 
 
-def streamlit_table(dataframe):
-    st.header("Experiment Statistics")
-    st.text("")
-    st.table(dataframe.assign(hack="").set_index("hack"))
+def streamlit_table(dataframe, _st_):
+    _st_.header("Experiment Statistics")
+    _st_.text("")
+    _st_.table(dataframe.assign(hack="").set_index("hack"))
 
 
 class DashboardBackend:
@@ -126,11 +144,6 @@ try:
 except:
     pass
 
-st.title("Long Term Memory Dashboard")
-st.markdown("---")
-st.text("")
-st.text("")
-st.text("")
 
 path = sys.argv[1]
 
@@ -147,9 +160,16 @@ exper_select = st.sidebar.selectbox("Select Experiment:", exp_name_list)
 model_name_list = backend.get_objective_function_list(exper_select)
 model_select = st.sidebar.selectbox("Select Objective Function:", model_name_list)
 
-
 model_statistics = backend.create_model_statistics(model_name_list)
-# streamlit_table(model_statistics)
+
+st.header(exper_select + " Experiment Statistics")
+st.text("")
+st.table(model_statistics.assign(hack="").set_index("hack"))
+
+st.markdown("---")
+st.text("")
+st.text("")
+st.text("")
 
 
 objective_function = backend.read_objective_function(exper_select, model_select)
@@ -157,32 +177,23 @@ objective_function_str = inspect.getsource(objective_function)
 
 
 search_data = backend.read_search_data(exper_select, model_select)
-
 col1, col2 = st.beta_columns(2)
 
-col1.header("Experiment Statistics")
+st.header(model_select)
+
+
+col1.header("Objective Function")
 col1.text("")
-col1.table(model_statistics.assign(hack="").set_index("hack"))
+col1.code(objective_function_str)
 
-col2.header("Objective Function")
-col2.text("")
-col2.code(objective_function_str)
-
-st.text("")
-st.text("")
-st.text("")
-
-st.title("Plots")
-st.markdown("---")
-
-st.text("")
+# plotly_table(search_data, col2)
+# streamlit_table(search_data, col2)
 
 
 # Tabular Data Explorer
-from tabular_data_explorer import ltm_wrapper
 
 st.sidebar.text("")
 st.sidebar.text("")
 st.sidebar.text("")
 
-ltm_wrapper.open(search_data)
+open_tde(search_data)
