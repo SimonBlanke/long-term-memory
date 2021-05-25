@@ -4,13 +4,14 @@
 
 import os
 import sys
-import dill
+
 import inspect
 import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
 
-from ltm_wrapper import open_tde
+from tde_wrapper import open_tde
+from data_io import DataIO
 
 
 def search_data_statistics(search_data):
@@ -72,39 +73,9 @@ def streamlit_table(dataframe, _st_):
     _st_.table(dataframe.assign(hack="").set_index("hack"))
 
 
-class DashboardBackend:
+class DashboardBackend(DataIO):
     def __init__(self, path):
-        self.path = path
-        self.ltm_path = self.path + "/ltm_data/"
-
-    def get_expermiment_list(self):
-        return os.listdir(self.ltm_path)
-
-    def get_objective_function_list(self, experiment_id):
-        return os.listdir(self.ltm_path + experiment_id + "/")
-
-    def read_search_data(self, experiment_id, model_id):
-        search_data_path = (
-            path + "/ltm_data/" + experiment_id + "/" + model_id + "/search_data.csv"
-        )
-        return pd.read_csv(search_data_path)
-
-    def read_objective_function(self, experiment_id, model_id):
-        objective_function_path = (
-            path
-            + "/ltm_data/"
-            + experiment_id
-            + "/"
-            + model_id
-            + "/objective_function.pkl"
-        )
-        # with open(objective_function_path) as f:
-        #     objective_function = f.read()
-
-        with open(objective_function_path, "rb") as input_file:
-            objective_function = dill.load(input_file)
-
-        return objective_function
+        super().__init__(path)
 
     def create_model_statistics(self, model_name_list):
         stats_list = []
@@ -120,7 +91,7 @@ class DashboardBackend:
             search_data = pd.read_csv(search_data_path)
             stats = search_data_statistics(search_data)
 
-            objective_function = self.read_objective_function(exper_select, model_name)
+            objective_function = self.objective_function(exper_select, model_name)
             obj_func_name = objective_function.__name__
 
             stats["Model ID"] = model_name
@@ -154,10 +125,10 @@ st.sidebar.text("")
 st.sidebar.text("")
 st.sidebar.text("")
 
-exp_name_list = backend.get_expermiment_list()
+exp_name_list = backend.expermiments()
 exper_select = st.sidebar.selectbox("Select Experiment:", exp_name_list)
 
-model_name_list = backend.get_objective_function_list(exper_select)
+model_name_list = backend.objective_functions(exper_select)
 model_select = st.sidebar.selectbox("Select Objective Function:", model_name_list)
 
 model_statistics = backend.create_model_statistics(model_name_list)
@@ -172,11 +143,11 @@ st.text("")
 st.text("")
 
 
-objective_function = backend.read_objective_function(exper_select, model_select)
+objective_function = backend.objective_function(exper_select, model_select)
 objective_function_str = inspect.getsource(objective_function)
 
 
-search_data = backend.read_search_data(exper_select, model_select)
+search_data = backend.search_data(exper_select, model_select)
 col1, col2 = st.beta_columns(2)
 
 st.header(model_select)

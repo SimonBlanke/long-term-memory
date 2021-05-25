@@ -10,6 +10,7 @@ import pandas as pd
 
 from .search_data_converter import SearchDataConverter
 from .open_dashboard import open_dashboard
+from .data_io import DataIO
 
 pd.options.mode.chained_assignment = None
 
@@ -22,12 +23,9 @@ def atomic_overwrite(filename):
     os.rename(temp, filename)  # this will only happen if no exception was raised
 
 
-class LongTermMemory:
-    def __init__(
-        self,
-        path=None,
-    ):
-        self.path = path
+class LongTermMemory(DataIO):
+    def __init__(self, path):
+        super().__init__(path)
 
     def _init_paths(self, model_id, study_id):
         self.ltm_path = self.path + "/ltm_data/"
@@ -110,6 +108,7 @@ class LongTermMemory:
         self.search_space = search_space
 
         self.replace_existing = replace_existing
+        self.drop_duplicates = drop_duplicates
 
         self._init_paths(model_id, study_id)
         self.para_names = list(search_space.keys())
@@ -131,17 +130,19 @@ class LongTermMemory:
     def load(self):
         return self._load()
 
-    def save_on_finish(self, dataframe, drop_duplicates=True):
-        self._save_search_data(dataframe, drop_duplicates)
+    def save_on_finish(self, dataframe):
+        self._save_search_data(dataframe, self.drop_duplicates)
 
-    def save_on_iteration(self, data_dict, nth_process=None, drop_duplicates=True):
+    def save_on_iteration(self, data_dict, nth_process=None):
         self._init_data_path(nth_process)
-        self._append(data_dict, drop_duplicates)
+        self._append(data_dict, self.drop_duplicates)
 
 
 class Dashboard:
     def __init__(self, path):
         self.path = path
+
+        # TODO: clean files without dropduplicates for all models
 
     def open(self):
         open_dashboard(self.path)
