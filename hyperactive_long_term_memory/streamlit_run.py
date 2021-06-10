@@ -11,7 +11,7 @@ import streamlit as st
 import plotly.graph_objects as go
 
 from tde_wrapper import open_tde
-from data_io import DataIO
+from data_io import Paths
 
 
 def search_data_statistics(search_data):
@@ -31,49 +31,13 @@ def search_data_statistics(search_data):
     }
 
 
-def plotly_table(df, _st_):
-    headerColor = "grey"
-    rowEvenColor = "lightgrey"
-    rowOddColor = "white"
-
-    df_len = len(df)
-
-    fig = go.Figure(
-        data=[
-            go.Table(
-                header=dict(
-                    values=list(df.columns), fill_color="#b5beff", align="left"
-                ),
-                cells=dict(
-                    values=[df[col] for col in df.columns],
-                    # fill_color="lavender",
-                    fill_color=[
-                        [
-                            rowOddColor,
-                            rowEvenColor,
-                        ]
-                        * int((df_len / 2) + 1)
-                    ],
-                    align=["left", "center"],
-                    font=dict(color="darkslategray", size=11),
-                ),
-            )
-        ]
-    )
-    width = 900
-    height = 700
-    fig.update_layout(width=width, height=height)
-
-    _st_.plotly_chart(fig)
-
-
 def streamlit_table(dataframe, _st_):
     _st_.header("Experiment Statistics")
     _st_.text("")
     _st_.table(dataframe.assign(hack="").set_index("hack"))
 
 
-class DashboardBackend(DataIO):
+class DashboardBackend(Paths):
     def __init__(self, path):
         super().__init__(path)
 

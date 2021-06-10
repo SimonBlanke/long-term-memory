@@ -4,43 +4,38 @@
 
 import os
 import glob
+from numpy import isin
 import pandas as pd
 
 from .search_data_converter import SearchDataConverter
 from .open_dashboard import open_dashboard
-from .data_io import DataIO
+from .data_io import DataIO, Paths
 
 pd.options.mode.chained_assignment = None
 
 
-class LTMBackend(DataIO):
-    def __init__(self, path):
-        super().__init__(path)
+class DataCollector:
+    def __init__(self, path, drop_duplicates=False):
+        self.path = path
+        self.drop_duplicates = drop_duplicates
 
-    def _init_data_path(self, nth_process):
-        # create file name for processes
-        if nth_process is not None:
-            self.file_name_proc = "search_data_" + str(nth_process) + ".csv"
+        self.path2file = path.rsplit("/", 1)[0] + "/"
+        self.file_name = path.rsplit("/", 1)[1]
 
-        search_data_proc_path = self.model_path + self.file_name_proc
+        self.io = DataIO(path, drop_duplicates)
 
-        # create csv with header columns if they do not exist
-        if not os.path.isfile(search_data_proc_path):
-            search_data = pd.DataFrame(columns=self.para_names)
-            search_data.to_csv(search_data_proc_path, index=False)
+    def load(self):
+        return self.io.load(self.path)
 
-    def _load(self):
-        if os.path.isfile(self.search_data_path):
-            search_data = pd.read_csv(self.search_data_path)
-            search_data = self.sd_conv.str2func(search_data)
-            return search_data
+    def save_iter(self, dictionary):
+        search_data = pd.DataFrame(dictionary, index=[0])
+        self.io.locked_write(search_data, self.path)
 
-    def _append(self, para_dict, drop_duplicates):
-        search_data = pd.DataFrame(para_dict, index=[0])
-        self.save_search_data(search_data, drop_duplicates)
+    def save_run(self, dataframe, replace_existing=False):
+        self.io.atomic_write(dataframe, self.path, replace_existing)
 
 
-class LongTermMemory(LTMBackend):
+class LongTermMemory(Paths):
     def __init__(self, path):
         super().__init__(path)
 
@@ -70,6 +65,28 @@ class LongTermMemory(LTMBackend):
 
         self.clean_files(drop_duplicates)
 
+    def read_objective_function(self, study_id, model_id):
+        objective_function_path = (
+            self.ltm_path + study_id + "/" + model_id + "/objective_function.pkl"
+        )
+        with open(objective_function_path, "rb") as input_file:
+            objective_function = dill.load(input_file)
+
+        return objective_function
+
+    def save_objective_function(self, study_id, model_id):
+        with open(
+            self.ltm_path
+            + "/"
+            + study_id
+            + "/"
+            + model_id
+            + "/"
+            + "objective_function.pkl",
+            "wb",
+        ) as output_file:
+            dill.dump(self.objective_function, output_file)
+
     def clean_files(self, drop_duplicates):
         search_data_proc_paths = glob.glob(
             self.ltm_path + self.model_path + "search_data_*.csv"
@@ -94,16 +111,6 @@ class LongTermMemory(LTMBackend):
         for search_data_proc_path in search_data_proc_paths:
             if os.path.exists(search_data_proc_path):
                 os.remove(search_data_proc_path)
-
-    def load(self):
-        return self._load()
-
-    def save_on_finish(self, dataframe):
-        self.save_search_data(dataframe, self.drop_duplicates)
-
-    def save_on_iteration(self, data_dict, nth_process=None):
-        self._init_data_path(nth_process)
-        self._append(data_dict, self.drop_duplicates)
 
 
 class Dashboard:

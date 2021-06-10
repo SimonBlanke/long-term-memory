@@ -6,9 +6,10 @@ __version__ = "0.0.1"
 __license__ = "MIT"
 
 
-from .ltm import LongTermMemory, Dashboard
+from .ltm import LongTermMemory, DataCollector, Dashboard
 
 __all__ = [
     "LongTermMemory",
+    "DataCollector",
     "Dashboard",
 ]
