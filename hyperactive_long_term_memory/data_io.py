@@ -38,6 +38,15 @@ class Paths:
         elif not os.path.exists(self.ltm_path):
             os.makedirs(self.ltm_path, exist_ok=True)
 
+    def read_objective_function(self, study_id, model_id):
+        objective_function_path = (
+            self.ltm_path + study_id + "/" + model_id + "/objective_function.pkl"
+        )
+        with open(objective_function_path, "rb") as input_file:
+            objective_function = dill.load(input_file)
+
+        return objective_function
+
     def study_list(self):
         return os.listdir(self.ltm_path)
 
@@ -45,7 +54,14 @@ class Paths:
         return os.listdir(self.ltm_path + exp_id + "/")
 
     def read_search_data(self, study_id, model_id):
-        return pd.read_csv(self.path)
+        self.ltm_path = self.path + "/ltm_data/"
+        self.model_path_ = "/" + study_id + "/" + model_id + "/"
+        self.file_name_ = "search_data.csv"
+
+        self.model_path = self.ltm_path + self.model_path_
+        self.search_data_path = self.ltm_path + self.model_path_ + self.file_name_
+
+        return pd.read_csv(self.search_data_path)
 
 
 class DataIO:

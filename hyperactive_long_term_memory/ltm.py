@@ -65,15 +65,6 @@ class LongTermMemory(Paths):
 
         self.clean_files(drop_duplicates)
 
-    def read_objective_function(self, study_id, model_id):
-        objective_function_path = (
-            self.ltm_path + study_id + "/" + model_id + "/objective_function.pkl"
-        )
-        with open(objective_function_path, "rb") as input_file:
-            objective_function = dill.load(input_file)
-
-        return objective_function
-
     def save_objective_function(self, study_id, model_id):
         with open(
             self.ltm_path
