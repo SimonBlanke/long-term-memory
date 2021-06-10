@@ -43,7 +43,7 @@ class DashboardBackend(Paths):
 
     def create_model_statistics(self, study_id, model_name_list):
         stats_list = []
-        for model_id in model_list:
+        for model_id in model_name_list:
             search_data = self.read_search_data(study_id, model_id)
             stats = search_data_statistics(search_data)
 
@@ -66,61 +66,62 @@ class DashboardBackend(Paths):
         return df
 
 
-try:
-    st.set_page_config(page_title="Long Term Memory Dashboard", layout="wide")
-except:
-    pass
+def main():
+
+    try:
+        st.set_page_config(page_title="Long Term Memory Dashboard", layout="wide")
+    except:
+        pass
+
+    path = sys.argv[1]
+
+    backend = DashboardBackend(path)
+
+    st.sidebar.title("Long Term Memory")
+    st.sidebar.text("")
+    st.sidebar.text("")
+    st.sidebar.text("")
+
+    study_list = backend.study_list()
+    study_select = st.sidebar.selectbox("Select Study:", study_list)
+
+    model_list = backend.model_list(study_select)
+    model_select = st.sidebar.selectbox("Select Model:", model_list)
+
+    model_statistics = backend.create_model_statistics(study_select, model_list)
+
+    st.header(study_select + " Study Statistics")
+    st.text("")
+    st.table(model_statistics.assign(hack="").set_index("hack"))
+
+    st.markdown("---")
+    st.text("")
+    st.text("")
+    st.text("")
+
+    objective_function = backend.read_objective_function(study_select, model_select)
+    objective_function_str = inspect.getsource(objective_function)
+
+    search_data = backend.read_search_data(study_select, model_select)
+    col1, col2 = st.beta_columns(2)
+
+    st.header(model_select)
+
+    col1.header("Objective Function")
+    col1.text("")
+    col1.code(objective_function_str)
+
+    # plotly_table(search_data, col2)
+    # streamlit_table(search_data, col2)
+
+    # Tabular Data Explorer
+
+    st.sidebar.text("")
+    st.sidebar.text("")
+    st.sidebar.text("")
+
+    open_tde(search_data)
 
 
-path = sys.argv[1]
-
-backend = DashboardBackend(path)
-
-st.sidebar.title("Long Term Memory")
-st.sidebar.text("")
-st.sidebar.text("")
-st.sidebar.text("")
-
-study_list = backend.study_list()
-study_select = st.sidebar.selectbox("Select Study:", study_list)
-
-model_list = backend.model_list(study_select)
-model_select = st.sidebar.selectbox("Select Model:", model_list)
-
-model_statistics = backend.create_model_statistics(study_select, model_list)
-
-st.header(study_select + " Study Statistics")
-st.text("")
-st.table(model_statistics.assign(hack="").set_index("hack"))
-
-st.markdown("---")
-st.text("")
-st.text("")
-st.text("")
-
-
-objective_function = backend.read_objective_function(study_select, model_select)
-objective_function_str = inspect.getsource(objective_function)
-
-
-search_data = backend.read_search_data(study_select, model_select)
-col1, col2 = st.beta_columns(2)
-
-st.header(model_select)
-
-
-col1.header("Objective Function")
-col1.text("")
-col1.code(objective_function_str)
-
-# plotly_table(search_data, col2)
-# streamlit_table(search_data, col2)
-
-
-# Tabular Data Explorer
-
-st.sidebar.text("")
-st.sidebar.text("")
-st.sidebar.text("")
-
-open_tde(search_data)
+if __name__ == "__main__":
+    main()
