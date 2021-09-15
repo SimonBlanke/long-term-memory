@@ -7,7 +7,14 @@ from setuptools import find_packages
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-requires = ["numpy", "pandas", "tqdm", "dill", "tabular-data-explorer"]
+requires = [
+    "numpy",
+    "pandas",
+    "tqdm",
+    # "dill",
+    # "tabular-data-explorer",
+    "hyperactive_data_storage",
+]
 
 
 def find_version(*filepath):
