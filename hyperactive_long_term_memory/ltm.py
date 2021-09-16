@@ -10,7 +10,6 @@ import pandas as pd
 from hyperactive_data_storage import DataCollector
 
 
-from .search_data_converter import SearchDataConverter
 from .open_dashboard import open_dashboard
 from .data_io import Paths
 
@@ -75,8 +74,7 @@ class LongTermMemory(Paths):
 
         self.para_names = list(search_space.keys())
 
-        self.data_c = DataCollector(self.search_data_path)
-        self.sd_conv = SearchDataConverter(search_space)
+        self.data_c = DataCollector(self.search_data_path, search_space=search_space)
 
         if not os.path.exists(self.model_path + "objective_function.pkl"):
             self.save_objective_function(study_id, model_id)
